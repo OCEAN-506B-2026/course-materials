@@ -4,6 +4,7 @@ install.packages(c(
   "boot", "car", "carData", "pwr", "effectsize",
   "FactoMineR", "factoextra", "cluster", "dbscan", "ggbiplot",
   "ggdendro", "vegan", "umap", "lmtest", "statmod",
-  "lme4", "nlme", "mgcv", "VGAM", "ciTools",
-  "ecotox", "varTestnlme", "gratia", "palmerpenguins", "ncdf4"
+  "ARTool", "lme4", "nlme", "mgcv", "VGAM", 
+  "ciTools", "ecotox", "varTestnlme", "gratia", "palmerpenguins", 
+  "ncdf4"
 ))
