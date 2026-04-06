@@ -5,7 +5,7 @@ install.packages(c(
   "effectsize", "e1071", "dunn.test", "emmeans", "FactoMineR", 
   "factoextra", "cluster", "dbscan", "ggbiplot","ggdendro", 
   "vegan", "umap", "broom", "lmtest", "statmod", 
-  "ARTool", "lme4", "nlme", "broom.mixed", "mgcv", 
-  "VGAM", "ciTools", "ecotox", "varTestnlme", "gratia", 
-  "palmerpenguins", "ncdf4"
+  "ARTool", "lme4", "lmerTest", "nlme", "broom.mixed", 
+  "mgcv", "VGAM", "ciTools", "ecotox", "varTestnlme", 
+  "gratia", "palmerpenguins", "ncdf4"
 ))
