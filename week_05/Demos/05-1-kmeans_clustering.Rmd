@@ -1,0 +1,97 @@
+---
+title: "Clustering analysis"
+author: "Wing-Ho Ko"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading packages
+
+```{r}
+library(tidyverse)
+library(ggbiplot)
+library(cluster)
+library(factoextra)
+```
+
+## k-means clustering
+
+### k-means clustering, fixed k
+
+Loading the banknotes dataset
+
+```{r}
+banknotes <- read_csv("data/banknotes.csv")
+```
+
+Preprocess the data by performing a PCA, and truncate the data to the first 3 PCs:
+
+```{r}
+bnotes_pca <- prcomp(select(banknotes, Length:Top), scale.=TRUE)
+```
+
+```{r}
+bnotes_coords <- as.data.frame(bnotes_pca$x) |> select(PC1:PC3)
+```
+
+We know that the banknotes are either genuine or counterfeit, hence we assume there are 2 clusters
+
+```{r}
+bnotes_km <- kmeans(bnotes_coords, centers=2)
+```
+
+Plot the result of clustering on the first two PCA coordinates
+
+```{r}
+ggbiplot(bnotes_pca, scale=0, groups=as.factor(bnotes_km$cluster))
+```
+
+Compare with ground truth
+
+```{r}
+ggbiplot(bnotes_pca, scale=0, groups=as.factor(banknotes$Currency))
+```
+
+### k-means clustering, determining k
+
+Try to determine the "natural" number of cluster by looking for an elbow in within-cluster-sum-of-squares
+
+```{r}
+fviz_nbclust(bnotes_coords, kmeans, method = "wss")
+```
+
+Now try to determine the number of cluster using Silhouette score instead:
+
+```{r}
+fviz_nbclust(bnotes_coords, kmeans, method = "silhouette")
+```
+
+Inspect the Silhouette plot when k = 2
+
+```{r}
+dists <- dist(bnotes_coords)
+sil <- silhouette(bnotes_km$cluster, dists)
+
+p <- fviz_silhouette(sil)
+p$layers[[2]]$aes_params$colour <- "black"
+
+print(p)
+```
+
+Compare with the case of k = 5
+
+```{r}
+n_clust <- 5
+
+dists <- dist(select(banknotes, Length:Top))
+clust <- kmeans(select(banknotes, Length:Top), n_clust)
+sil <- silhouette(clust$cluster, dists)
+
+p <- fviz_silhouette(sil)
+p$layers[[2]]$aes_params$colour <- "black"
+
+print(p)
+```
+

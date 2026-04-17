@@ -1,0 +1,188 @@
+---
+title: "simple linear regression data preprocessing"
+author: "Wing-Ho Ko"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## loading packages
+
+```{r}
+library(tidyverse)
+library(broom)
+library(ggplot2)
+```
+
+## Preprocessing datasets
+
+Load the annual global surface temperature dataset
+
+```{r}
+temperature <- read_table(
+  "data/global_temperature.txt", 
+  col_names=c("year", "T_raw", "T_smoothed"), 
+  skip=5
+)
+```
+
+Load the Mauna Loa CO2 dataset
+
+```{r}
+CO2 <- read_table(
+  "data/co2_annmean_mlo.txt",
+  col_names = c("year", "CO2_mean", "CO2_unc"),
+  skip=45
+)
+```
+
+Combine the two datasets using `inner_join()`
+
+```{r}
+CO2_vs_T <- inner_join(CO2, temperature, by=join_by(year==year))
+CO2_vs_T
+```
+
+Plot CO2 versus T
+
+```{r}
+ggplot(CO2_vs_T, aes(x=CO2_mean, y=T_raw)) + geom_point() + geom_line()
+```
+
+### Performing linear regression
+
+Perform linear regression
+
+```{r}
+CO2_T_lm <- lm(T_raw ~ CO2_mean, CO2_vs_T)
+```
+
+### Extracting information
+
+Display the summary
+
+```{r}
+CO2_T_sm <- summary(CO2_T_lm)
+print(CO2_T_sm)
+```
+
+To convenient extract information about the fitted paramters, use the `tidy()` function from `broom`
+
+```{r}
+CO2_T_lm_tbl <- tidy(CO2_T_lm)
+CO2_T_lm_tbl
+```
+
+To conveniently extract information about the overall fit, use the `glance()` function from broom
+
+```{r}
+CO2_T_lm_gl <- glance(CO2_T_lm)
+CO2_T_lm_gl
+```
+
+Extract the r-squared value from the data frame returned by `glance()`
+
+```{r}
+CO2_T_lm_gl$sigma
+```
+
+
+### Predictions
+
+First, create a data frame for new data:
+
+```{r}
+CO2_new <- data.frame(
+  CO2_mean = seq(300, 450, 5)
+)
+```
+
+Making prediction using the fitted model
+
+```{r}
+T_new <- predict(CO2_T_lm, CO2_new)
+CO2_vs_T_new <- cbind(CO2_new, T_new)
+
+CO2_vs_T_new
+```
+
+Include also the 95% confidence interval:
+
+```{r}
+T_conf <- predict(CO2_T_lm, CO2_new, interval="confidence", level=0.95)
+CO2_vs_T_conf <- cbind(CO2_new, as.data.frame(T_conf))
+
+CO2_vs_T_conf
+```
+
+Let's also make 90% perdiction interval
+
+```{r}
+T_pred <- predict(CO2_T_lm, CO2_new, interval="prediction", level=0.9)
+CO2_vs_T_pred <- cbind(CO2_new, as.data.frame(T_pred))
+
+CO2_vs_T_pred
+```
+
+### Visualization
+
+Plot the original data point against the fitted values
+
+```{r}
+CO2_vs_T_fitted <- CO2_vs_T |> mutate(T_fit = fitted(CO2_T_lm))
+
+ggplot(CO2_vs_T_fitted) + 
+  geom_point(aes(x=CO2_mean, y=T_raw)) +
+  geom_line(aes(x=CO2_mean, y=T_fit), color="blue", linetype="dashed")
+```
+
+Plot confidence interval with data:
+
+```{r}
+ggplot(CO2_vs_T_conf, aes(x=CO2_mean, y=fit)) + 
+  geom_line(color="blue", linetype="dashed") + 
+  geom_ribbon(aes(ymin=lwr, ymax=upr), fill="cyan", alpha=0.2) + 
+  geom_point(aes(x=CO2_mean, y=T_raw), CO2_vs_T)
+```
+
+Compare with `geom_smooth()` with `method=lm`:
+
+```{r}
+ggplot(CO2_vs_T, aes(x=CO2_mean, y=T_raw)) + 
+  geom_smooth(method="lm") + geom_point()
+```
+
+plot the prediction interval instead:
+
+```{r}
+ggplot(CO2_vs_T_pred, aes(x=CO2_mean, y=fit)) + 
+  geom_line(color="forestgreen", linetype="dashed") + 
+  geom_ribbon(aes(ymin=lwr, ymax=upr), fill="lawngreen", alpha=0.2) + 
+  geom_point(aes(x=CO2_mean, y=T_raw), CO2_vs_T)
+```
+
+### Diagnostics
+
+Plot the residual against CO2:
+
+```{r}
+ggplot(CO2_vs_T) + geom_point(aes(x=CO2_mean, y=resid(CO2_T_lm)))
+```
+
+The data looks fairly homoscedastic and trend-less. Let's also check if it is roughly normal
+
+```{r}
+ggplot(mapping=aes(sample=resid(CO2_T_lm))) + geom_qq() + geom_qq_line()
+```
+
+So the samples have light tails on both ends. The skewness and kurtosis are:
+
+```{r}
+c(
+  e1071::skewness(resid(CO2_T_lm)),
+  e1071::kurtosis(resid(CO2_T_lm))
+)
+```
+
+So the normality assumption is probably OK. Note also that since the distribution has lighter tails than the normal distribution, the prediction intervals are probably more conservative than actual and so are also acceptable.
