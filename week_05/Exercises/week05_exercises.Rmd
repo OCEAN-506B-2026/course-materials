@@ -38,3 +38,10 @@ Consider the penguins dataset. Treat body mass as the response variable and flip
 5. Suppose the flipper length of a penguin is measured to be 204 mm. What is the expected body mass of the penguin? And what is the range of body mass you'd expect to cover the body mass of the penguin 90% of the times?
 
 6. Plot the residuals against the explanatory variable. Is there an overall trend in the mean? Is there heteroscedasticity? Also check normality.
+
+
+## (Optional) Feedback questions
+
+1. Are there any topic(s) from this week that still confuse you?
+
+2. Which activities work and which doesn't? What do you want to see change and what do you want to keep?
