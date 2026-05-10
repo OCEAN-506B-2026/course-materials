@@ -108,3 +108,11 @@ ratpup_lmm <- lmer(
 1. Fix litter size at the median. For each combination sex and Treatment, and for an unspecified (and possibly previously unobserved) litter, predict the mean pup weight and provide its uncertainty. Visualize the result in a plot with error bar
 
 2. Suppose the female rat producing litter #5 was latter given a low treatment dose and gave birth to 7 pups (i.e., `Lsize` = 7). What is the range of birth weights of rat pup (covering up to 95% chance) expected of each sex? Again visualize the result with a plot.
+
+
+## (Optional) Feedback questions
+
+1. Are there any topic(s) from this week that still confuse you?
+
+2. Which activities work and which doesn't? What do you want to see change and what do you want to keep?
+
