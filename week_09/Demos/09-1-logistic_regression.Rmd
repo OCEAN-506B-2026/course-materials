@@ -147,13 +147,6 @@ serum_ci <- add_ci(data.frame(Dose=serum$Dose), serum_glm)
 serum_ci
 ```
 
-Predict the 50% and 90% effective dose
-
-```{r}
-serum_doses <- LC_logit(cbind(Survivors, Deceased) ~ log10(Dose), serum, p=c(50, 90))
-serum_doses
-```
-
 Plot the fitted value (with confidence interval) with the effective dose (with confidence interval) and the raw data
 
 ```{r}
@@ -163,23 +156,89 @@ ggplot() + geom_point(aes(x=Dose, y=Survivors/Number), serum) +
     aes(x=Dose, ymin=LCB0.025, ymax=UCB0.975), 
     serum_ci, color="gray", alpha=0.2
   ) + 
-  geom_vline(
-    aes(xintercept=dose, color=as.factor(p)), 
-    serum_doses, linewidth=1, linetype="dotted"
-  ) +
-  geom_hline(
-    aes(yintercept=p/100, color=as.factor(p)), 
-    serum_doses, linewidth=1, linetype="dotted"
-  ) +
-  geom_segment(
-    aes(x=LCL, xend=UCL, y=p/100, yend=p/100, color=as.factor(p)), 
-    serum_doses, linewidth=2, alpha=0.5
-  ) + 
   scale_x_continuous(transform="log10")
 ```
 
 
-## Example 3: model selection and diagonoses
+## Example 3: swiss banknotes redux
+
+```{r}
+banknotes <- read_csv("data/banknotes.csv") |>
+  mutate(Currency = as.integer(Currency))
+```
+
+```{r}
+bnotes_glm <- glm(
+  Currency ~ Length + Left + Right + Bottom + Top, 
+  binomial, banknotes
+)
+
+summary(bnotes_glm)
+```
+
+```{r}
+ggplot(banknotes, aes(x=Bottom, y=Top, color=as.factor(Currency))) + 
+  geom_point()
+```
+
+```{r}
+bnotes_glm <- glm(
+  Currency ~ Bottom + Top, 
+  binomial, banknotes
+)
+
+summary(bnotes_glm)
+```
+
+```{r}
+banknotes |> summarize(
+  min_Bottom = min(Bottom),
+  max_Bottom = max(Bottom),
+  min_Top = min(Top),
+  max_Top = max(Top)
+)
+```
+
+```{r}
+new_Bottom <- seq(7, 13, 0.1)
+new_Top <- seq(7, 13, 0.1)
+new_bnotes <- data.frame(
+  Bottom = rep(new_Bottom, each=length(new_Top)),
+  Top = rep(new_Top, times=length(new_Bottom))
+)
+
+bnotes_pred <- add_ci(new_bnotes, bnotes_glm)
+```
+
+```{r}
+ggplot() + 
+  geom_contour(
+    aes(x=Bottom, y=Top, z=pred), 
+    bnotes_pred, 
+    breaks = c(0.1, 0.3, 0.5, 0.7, 0.9),
+    linetype="dashed"
+  ) + 
+  geom_point(
+    aes(x=Bottom, y=Top, color=as.factor(Currency)),
+    banknotes
+  )  
+```
+
+```{r}
+bnotes_fitted <- banknotes |> 
+  mutate(class = ifelse(fitted(bnotes_glm) > 0.5, 1, 0))
+```
+
+```{r}
+bnotes_fitted |> summarize(
+  correct = sum(class == Currency),
+  incorrect = sum(class != Currency),
+  accuracy = mean(class == Currency)
+)
+```
+
+
+## Example 4: model selection and diagonoses
 
 Work again with the mites dataset:
 
@@ -245,82 +304,4 @@ var(mites_qresid)
 ```
 
 In conclusion, we do not see any serious problems
-
-## Example 4: swiss banknotes redux
-
-```{r}
-banknotes <- read_csv("data/banknotes.csv") |>
-  mutate(Currency = as.integer(Currency))
-```
-
-```{r}
-bnotes_glm <- glm(
-  Currency ~ Length + Left + Right + Bottom + Top, 
-  binomial, banknotes
-)
-
-summary(bnotes_glm)
-```
-
-```{r}
-ggplot(banknotes, aes(x=Bottom, y=Top, color=as.factor(Currency))) + 
-  geom_point()
-```
-
-
-```{r}
-bnotes_glm <- glm(
-  Currency ~ Bottom + Top, 
-  binomial, banknotes
-)
-
-summary(bnotes_glm)
-```
-
-```{r}
-banknotes |> summarize(
-  min_Bottom = min(Bottom),
-  max_Bottom = max(Bottom),
-  min_Top = min(Top),
-  max_Top = max(Top)
-)
-```
-
-```{r}
-new_Bottom <- seq(7, 13, 0.1)
-new_Top <- seq(7, 13, 0.1)
-new_bnotes <- data.frame(
-  Bottom = rep(new_Bottom, each=length(new_Top)),
-  Top = rep(new_Top, times=length(new_Bottom))
-)
-
-bnotes_pred <- add_ci(new_bnotes, bnotes_glm)
-```
-
-```{r}
-ggplot() + 
-  geom_contour(
-    aes(x=Bottom, y=Top, z=pred), 
-    bnotes_pred, 
-    breaks = c(0.1, 0.3, 0.5, 0.7, 0.9),
-    linetype="dashed"
-  ) + 
-  geom_point(
-    aes(x=Bottom, y=Top, color=as.factor(Currency)),
-    banknotes
-  )  
-```
-
-```{r}
-bnotes_fitted <- banknotes |> 
-  mutate(class = ifelse(fitted(bnotes_glm) > 0.5, 1, 0))
-```
-
-```{r}
-bnotes_fitted |> summarize(
-  correct = sum(class == Currency),
-  incorrect = sum(class != Currency),
-  accuracy = mean(class == Currency)
-)
-```
 
