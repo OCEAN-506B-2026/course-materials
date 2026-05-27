@@ -1,0 +1,150 @@
+---
+title: "Additive model: basics"
+author: "Wing-Ho Ko"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading packages
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(mgcv)
+library(gratia)
+library(broom)
+```
+
+## Loading the dataset
+
+```{r}
+data(trees, package="datasets")
+trees <- trees |> rename(Diam = Girth) |>
+  mutate(Hclass = cut(
+    Height, breaks=c(-Inf, 70, 80, Inf), labels=c("short", "medium", "tall")
+  ), .after=Height) |>
+  clean_names()
+```
+
+```{r}
+glimpse(trees)
+```
+
+
+## Visualization
+
+Visualize the dependence of volume on diameter 
+
+```{r}
+ggplot(trees) + geom_point(aes(x=diam, y=volume))
+```
+
+Perform the additive model estimation
+
+```{r}
+trees_gam <- gam(volume ~ s(diam), gaussian, trees)
+```
+
+Print out the summary
+
+```{r}
+summary(trees_gam)
+```
+
+Using `glance()` and `tidy()` from `broom`
+
+```{r}
+glance(trees_gam)
+```
+
+```{r}
+tidy(trees_gam, parametric=TRUE, conf.int=TRUE)
+```
+
+```{r}
+tidy(trees_gam)
+```
+
+Obtain confidence interval for the smooth
+
+```{r}
+trees_diam_confint <- confint(
+  trees_gam, 
+  "s(diam)", 
+  type="confidence", 
+  unconditional = TRUE
+) |> clean_names()
+
+trees_diam_confint
+```
+
+Visualize the result
+
+```{r}
+ggplot(
+  trees_diam_confint, 
+  aes(x=diam, y=estimate, ymax=upper_ci, ymin=lower_ci)
+) +
+  geom_ribbon(alpha=0.2) +
+  geom_line() +
+  theme_bw()
+```
+
+Add partial residuals:
+
+```{r}
+trees_diam_resid <- trees |> 
+  add_partial_residuals(trees_gam) |>
+  clean_names()
+
+trees_diam_resid
+```
+
+Visualize the result again
+
+```{r}
+ggplot(
+  trees_diam_confint, 
+  aes(x=diam, y=estimate)
+) +
+  geom_ribbon(aes(ymax=upper_ci, ymin=lower_ci), alpha=0.2) +  
+  geom_line() +
+  geom_point(aes(y=s_diam), data=trees_diam_resid) + 
+  theme_bw()
+```
+
+
+Make basic predictions
+
+```{r}
+Diam_new <- seq(8, 21, 0.25)
+trees_new <- data.frame(Diam=Diam_new)
+Volume_new <- predict(trees_gam, trees_new)
+trees_new <- cbind(trees_new, data.frame(Volume=Volume_new))
+
+trees_new
+```
+
+Make predictions with confidence intervals using `fitted_values()` from `gratia`
+
+```{r}
+trees_fitted <- fitted_values(trees_gam, data.frame(Diam=Diam_new), unconditional=TRUE)
+trees_fitted
+```
+
+Visualize the result
+
+```{r}
+ggplot(trees, aes(x=Diam, y=Volume)) + geom_point() + 
+  geom_ribbon(
+    aes(y=NULL, ymax=.upper_ci, ymin=.lower_ci), 
+    data=trees_fitted,
+    alpha=0.2
+  ) + 
+  geom_line(aes(y=.fitted), data=trees_fitted) +
+  theme_bw()
+```
+

@@ -1,0 +1,61 @@
+---
+title: "Week 10 exercises"
+author: "Wing-Ho Ko"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading packages
+
+```{r}
+library(tidyverse)
+library(broom)
+library(mgcv)
+library(gratia)
+library(janitor)
+```
+
+## Exercise 1: Pelagic bioluminescence, take 1
+
+In Gillibrand et al. (2007), pelagic bioluminescence along a depth gradient in the northeast Atlantic Ocean is analysed. The data is found in the file pelagic_bioluminescence.csv
+
+```{r}
+lumin <- read_csv("data/pelagic_bioluminescence.csv") |> clean_names()
+```
+
+```{r}
+glimpse(lumin)
+```
+
+```{r}
+ggplot(lumin, aes(x=sources, y=sample_depth)) + geom_point() + 
+  scale_y_continuous(transform="reverse") + facet_wrap(~station)
+```
+
+1. Subset the dataset to include only Station 13, and fit an additive model for which the amount of bioluminescence (`Sources`) depends semi-parametrically on sample depth (`SampleDepth`). Display the resulting summary.
+
+2. Visualize the dataset and the fit (including its uncertainty). Use the usual oceanographic convention that depth is on the vertical axis and increases downwards.
+
+
+## Exercise 2: Pelagic bioluminescence, take 2
+
+Again consider the pelagic bioluminescence data
+
+```{r}
+lumin <- read_csv("data/pelagic_bioluminescence.csv") |> clean_names()
+```
+
+```{r}
+glimpse(lumin)
+```
+
+1. Fit an additive model in which a single smooth is used to model all 3 stations, but which the intercept for each station may differ. Print the resulting summary.
+
+2. Plot the observed and predicted bioluminescence versus depth for all 3 stations. Include confidence intervals (hint: you may want to facet your plot)
+
+3. Plot the residuals against depth and use color to distinguish between different stations. Are the model assumptions acceptable?
+
+4. Refit using one smooth for each station. Remember to include all lower-order terms. Repeat parts (1) - (3) for this new fit (i.e., print the summary, make plots of data against predictions and confidence intervals, and investigate model assumptions).
+

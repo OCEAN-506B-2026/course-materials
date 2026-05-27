@@ -1,0 +1,160 @@
+---
+title: "Additive model: advanced"
+author: "Wing-Ho Ko"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading packages
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(mgcv)
+library(gratia)
+library(broom)
+```
+
+## Loading the dataset
+
+```{r}
+data(trees, package="datasets")
+trees <- trees |> rename(Diam = Girth) |>
+  mutate(Hclass = cut(
+    Height, breaks=c(-Inf, 70, 80, Inf), labels=c("short", "medium", "tall")
+  ), .after=Height) |>
+  clean_names()
+```
+
+```{r}
+glimpse(trees)
+```
+
+
+## Extension 1: including parametric terms
+
+```{r}
+trees_gam1 <- gam(volume ~ s(diam) + hclass, gaussian, trees)
+summary(trees_gam1)
+```
+
+As before, we need to treat the `Hclass` factor as a whole, via `anova()`:
+
+```{r}
+anova(trees_gam1)
+```
+
+Confidence interval for parametric term can be assessed via `tidy()` using `parametric=TRUE` and `conf.int=TRUE`
+
+```{r}
+trees_para_confint <- tidy(trees_gam1, parametric=TRUE, conf.int=TRUE)
+trees_para_confint
+```
+
+
+## Extension 2: including additional smooths
+
+```{r}
+trees_gam2 <- gam(volume ~ s(diam) + s(height), gaussian, trees)
+summary(trees_gam2)
+```
+
+Extract the predicted smooths and their confidence intervals
+
+```{r}
+trees_diam_confint2 <- confint(trees_gam2, "s(diam)", type="confidence") |> 
+  clean_names()
+
+trees_height_confint2 <- confint(trees_gam2, "s(height)", type="confidence") |> 
+  clean_names()
+
+trees_height_confint2
+```
+
+Construct the partial residuals for each variable (in one go)
+
+```{r}
+trees_smooth_resid2 <- trees |> add_partial_residuals(trees_gam2) |>
+  clean_names()
+
+trees_smooth_resid2
+```
+
+Plot smooth with partial residual for diameter
+
+```{r}
+ggplot(trees_diam_confint2, aes(x=diam, y=estimate)) +
+  geom_point(aes(y=s_diam), data=trees_smooth_resid2) + 
+  geom_line() + 
+  geom_ribbon(aes(ymax=upper_ci, ymin=lower_ci), alpha=0.2) + 
+  theme_bw()
+```
+
+Plot smooth with partial residual for height
+
+```{r}
+ggplot(trees_height_confint2, aes(x=height, y=estimate)) +
+  geom_point(aes(y=s_height), data=trees_smooth_resid2) + 
+  geom_line() + 
+  geom_ribbon(aes(ymax=upper_ci, ymin=lower_ci), alpha=0.2) + 
+  theme_bw()
+```
+
+## Extension 3: interactions between parametric and smooth terms
+
+```{r}
+ggplot(trees) + geom_point(aes(x=diam, y=volume, color=hclass))
+```
+
+
+```{r}
+trees_gam3 <- gam(volume ~ s(diam, by=hclass) + hclass, gaussian, trees)
+summary(trees_gam3)
+```
+
+Notice that each factor level has a separate smooth. Thus we do not need to include the main effect term `s(diam)` in this case
+
+Construct the prediction with confidence intervals
+
+```{r}
+trees_new3 <- rbind(
+  data.frame(
+    diam=seq(8, 14, 0.25),
+    hclass="short"
+  ),
+  data.frame(
+    diam=seq(10, 18, 0.25),
+    hclass="medium"
+  ),
+  data.frame(
+    diam=seq(10, 20, 0.25),
+    hclass="tall"
+  )
+) |> mutate(hclass=as.factor(hclass))
+```
+
+```{r}
+trees_pred3 <- fitted_values(trees_gam3, trees_new3) |> clean_names()
+trees_pred3
+```
+
+```{r}
+ggplot(trees, aes(x=diam, color=hclass, fill=hclass)) + 
+  geom_point(aes(y=volume)) + 
+  geom_ribbon(aes(ymin=lower_ci, ymax=upper_ci), alpha=0.2, trees_pred3) +
+  geom_line(aes(y=fitted), trees_pred3) +
+  theme_bw()
+```
+
+## Extension 4: multivariable smooths
+
+Since a tree is anisotropic in its dimensions, it makes more sense to use tensor product smooths. And to separate the main and the interaction effects, the following model is fitted:
+
+```{r}
+trees_gam4 <- gam(volume ~ s(diam) + s(height) + ti(diam, height), gaussian, trees)
+summary(trees_gam4)
+```
+
